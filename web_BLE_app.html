@@ -1,0 +1,353 @@
+<!--
+  Rui Santos
+  Complete project details at https://RandomNerdTutorials.com/esp32-web-bluetooth/
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files.
+  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Web BLE App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="">
+    <style>
+    .range_container {
+    width: 300px;
+    margin: 20px 0;
+    }
+
+    .sliders_control {
+    position: relative;
+    width: 100%;
+    }
+
+    .sliders_control input[type=range] {
+    position: absolute;
+    width: 100%;
+    pointer-events: none; /* Prevent direct dragging of both at once */
+    }
+
+    .sliders_control input[type=range]::-webkit-slider-thumb {
+    pointer-events: auto;
+    }
+
+    .labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    }
+    </style>
+
+</head>
+<body>
+  <h1>ESP32 Web BLE Application</h1>
+  <button id="connectBleButton">Connect to BLE Device</button>
+  <button id="disconnectBleButton">Disconnect BLE Device</button>
+  <p>BLE state: <strong><span id="bleState" style="color:#d13a30;">Disconnected</span></strong></p>
+  <h2>Fetched Value</h2>
+  <p><span id="valueContainer">NaN</span></p>
+  <p>Last reading: <span id="timestamp"></span></p>
+
+  <h2>Control GPIO 16</h2>
+  <button id="onButton16">ON</button>
+  <button id="offButton16">OFF</button>
+  <h2>Control GPIO 17</h2>
+  <button id="onButton17">ON</button>
+  <button id="offButton17">OFF</button>
+  <h2>Control GPIO 18</h2>
+  <button id="onButton18">ON</button>
+  <button id="offButton18">OFF</button>
+  <h2>Control GPIO 19</h2>
+  <button id="onButton19">ON</button>
+  <button id="offButton19">OFF</button>
+  <h2>Control GPIO 21</h2>
+  <button id="onButton21">ON</button>
+  <button id="offButton21">OFF</button>
+  <h2>Reset GPIOs</h2>
+  <button id="reset">Reset</button>
+  <h2>Enable all GPIOs</h2>
+  <button id="enable">Enable</button>
+  <h2>Start</h2>
+  <button id="start">Start</button>
+  <div class="range_container">
+  <div class="sliders_control">
+    <input id="fromSlider" type="range" value="10" min="0" max="100" />
+    <input id="toSlider" type="range" value="40" min="0" max="100" />
+  </div>
+  <div class="labels">
+    <span>From: <span id="fromValue">10</span>s</span>
+    <span>To: <span id="toValue">40</span>s</span>
+  </div>
+</div>
+  <p>Last value sent: <span id="valueSent"></span></p>
+  <p><a href="https://randomnerdtutorials.com/">Created by RandomNerdTutorials.com</a></p>
+  <p><a href="https://RandomNerdTutorials.com/esp32-web-bluetooth/">Read the full project here.</a></p>
+</body>
+<script>
+    // DOM Elements
+    const connectButton = document.getElementById('connectBleButton');
+    const disconnectButton = document.getElementById('disconnectBleButton');
+    const onButton16 = document.getElementById('onButton16');
+    const offButton16 = document.getElementById('offButton16');
+    const onButton17 = document.getElementById('onButton17');
+    const offButton17 = document.getElementById('offButton17');
+    const onButton18 = document.getElementById('onButton18');
+    const offButton18 = document.getElementById('offButton18');
+    const onButton19 = document.getElementById('onButton19');
+    const offButton19 = document.getElementById('offButton19');
+    const onButton21 = document.getElementById('onButton21');
+    const offButton21 = document.getElementById('offButton21');
+    const resetButton = document.getElementById('reset');
+    const enableButton = document.getElementById('enable');
+    const startButton = document.getElementById('start');
+    const retrievedValue = document.getElementById('valueContainer');
+    const latestValueSent = document.getElementById('valueSent');
+    const bleStateContainer = document.getElementById('bleState');
+    const timestampContainer = document.getElementById('timestamp');
+
+    const fromSlider = document.getElementById("fromSlider");
+    const toSlider = document.getElementById("toSlider");
+    const fromValue = document.getElementById("fromValue");
+    const toValue = document.getElementById("toValue");
+
+    function controlFromSlider(fromSlider, toSlider, fromValue) {
+        let [from, to] = [parseInt(fromSlider.value), parseInt(toSlider.value)];
+        if (from > to - 1) {
+            fromSlider.value = to - 1;
+            from = to - 1;
+        }
+        fromValue.textContent = from;
+    }
+
+    function controlToSlider(fromSlider, toSlider, toValue) {
+        let [from, to] = [parseInt(fromSlider.value), parseInt(toSlider.value)];
+        if (to < from + 1) {
+            toSlider.value = from + 1;
+            to = from + 1;
+        }
+        toValue.textContent = to;
+    }
+
+    fromSlider.addEventListener('input', () => controlFromSlider(fromSlider, toSlider, fromValue));
+    toSlider.addEventListener('input', () => controlToSlider(fromSlider, toSlider, toValue));
+
+    function sendTimerRange() {
+        const from = parseInt(fromSlider.value);
+        const to = parseInt(toSlider.value);
+        const range = `${from},${to}`;
+
+        console.log("Sending timer range:", range);
+        // You can encode and send this range as needed
+        // Example (single value, change to match your BLE firmware):
+        // writeOnCharacteristic(from); // or custom command value
+
+        // Or send as a string with custom BLE logic
+        // new TextEncoder().encode(range) => Uint8Array
+    }
+        fromSlider.addEventListener('change', sendTimerRange);
+        toSlider.addEventListener('change', sendTimerRange);
+
+    //Define BLE Device Specs
+    var deviceName ='ESP32';
+    var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
+    var gpioCharacteristic = '19b10002-e8f2-537e-4f6c-d104768a1214';
+    var sensorCharacteristic= '19b10001-e8f2-537e-4f6c-d104768a1214';
+
+    //Global Variables to Handle Bluetooth
+    var bleServer;
+    var bleServiceFound;
+    var sensorCharacteristicFound;
+    let writeInProgress = false;
+
+    // Connect Button (search for BLE Devices only if BLE is available)
+    connectButton.addEventListener('click', (event) => {
+        if (isWebBluetoothEnabled()){
+            connectToDevice();
+        }
+    });
+
+    // Disconnect Button
+    disconnectButton.addEventListener('click', disconnectDevice);
+
+    // Write to the ESP32 gpioCharacteristic
+    
+    onButton16.addEventListener('click', debounce(() => writeOnCharacteristic(0)));
+    offButton16.addEventListener('click', debounce(() => writeOnCharacteristic(1)));
+
+    onButton17.addEventListener('click', debounce(() => writeOnCharacteristic(2)));
+    offButton17.addEventListener('click', debounce(() => writeOnCharacteristic(3)));
+
+    onButton18.addEventListener('click', debounce(() => writeOnCharacteristic(4)));
+    offButton18.addEventListener('click', debounce(() => writeOnCharacteristic(5)));
+    
+    onButton19.addEventListener('click', debounce(() => writeOnCharacteristic(6)));
+    offButton19.addEventListener('click', debounce(() => writeOnCharacteristic(7)));
+
+    onButton21.addEventListener('click', debounce(() => writeOnCharacteristic(8)));
+    offButton21.addEventListener('click', debounce(() => writeOnCharacteristic(9)));
+    resetButton.addEventListener('click', debounce(() => writeOnCharacteristic(99)));
+    enableButton.addEventListener('click', debounce(() => writeOnCharacteristic(98)));
+    startButton.addEventListener('click', debounce(() => writeOnCharacteristic(97)));
+    
+
+    // Check if BLE is available in your Browser
+    function isWebBluetoothEnabled() {
+        if (!navigator.bluetooth) {
+            console.log("Web Bluetooth API is not available in this browser!");
+            bleStateContainer.innerHTML = "Web Bluetooth API is not available in this browser!";
+            return false
+        }
+        console.log('Web Bluetooth API supported in this browser.');
+        return true
+    }
+
+    // Connect to BLE Device and Enable Notifications
+    function connectToDevice(){
+        console.log('Initializing Bluetooth...');
+        navigator.bluetooth.requestDevice({
+            filters: [{name: deviceName}],
+            optionalServices: [bleService]
+        })
+        .then(device => {
+            console.log('Device Selected:', device.name);
+            bleStateContainer.innerHTML = 'Connected to device ' + device.name;
+            bleStateContainer.style.color = "#24af37";
+            device.addEventListener('gattservicedisconnected', onDisconnected);
+            return device.gatt.connect();
+        })
+        .then(gattServer =>{
+            bleServer = gattServer;
+            console.log("Connected to GATT Server");
+            return bleServer.getPrimaryService(bleService);
+        })
+        .then(service => {
+            bleServiceFound = service;
+            console.log("Service discovered:", service.uuid);
+            return service.getCharacteristic(sensorCharacteristic);
+        })
+        .then(characteristic => {
+            console.log("Characteristic discovered:", characteristic.uuid);
+            sensorCharacteristicFound = characteristic;
+            characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicChange);
+            characteristic.startNotifications();
+            console.log("Notifications Started.");
+            return characteristic.readValue();
+        })
+        .then(value => {
+            console.log("Read value: ", value);
+            const decodedValue = new TextDecoder().decode(value);
+            console.log("Decoded value: ", decodedValue);
+            retrievedValue.innerHTML = decodedValue;
+        })
+        .catch(error => {
+            console.log('Error: ', error);
+        })
+    }
+
+    function onDisconnected(event){
+        console.log('Device Disconnected:', event.target.device.name);
+        bleStateContainer.innerHTML = "Device disconnected";
+        bleStateContainer.style.color = "#d13a30";
+
+        connectToDevice();
+    }
+
+    function handleCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Characteristic value changed: ", newValueReceived);
+        retrievedValue.innerHTML = newValueReceived;
+        timestampContainer.innerHTML = getDateTime();
+    }
+
+    function debounce(fn, delay = 300) {
+        let timeout;
+        return function(...args) {
+            if (timeout) return;
+            fn.apply(this, args);
+            timeout = setTimeout(() => timeout = null, delay);
+        };
+    }
+
+
+    function writeOnCharacteristic(value, isText = false){
+        if (!bleServer || !bleServer.connected) {
+            console.error("Bluetooth is not connected. Cannot write to characteristic.");
+            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!");
+            return;
+        }
+
+        if (writeInProgress) {
+            console.warn("Write already in progress. Please wait...");
+            return;
+        }
+
+        writeInProgress = true;
+
+        bleServiceFound.getCharacteristic(gpioCharacteristic)
+            .then(characteristic => {
+                console.log("Found the gpioCharacteristic: ", characteristic.uuid);
+                const data = isText
+                    ? new TextEncoder().encode(value)
+                    : new Uint8Array([value]);
+                console.log("Sending data: ", data);
+                return characteristic.writeValue(data);
+            })
+            .then(() => {
+                latestValueSent.innerHTML = value;
+                console.log("Value written to gpioCharacteristic:", value);
+            })
+            .catch(error => {
+                console.error("Error writing to the gpioCharacteristic: ", error);
+            })
+            .finally(() => {
+                writeInProgress = false;
+            });
+    }
+
+
+    function disconnectDevice() {
+        console.log("Disconnect Device.");
+        if (bleServer && bleServer.connected) {
+            if (sensorCharacteristicFound) {
+                sensorCharacteristicFound.stopNotifications()
+                    .then(() => {
+                        console.log("Notifications Stopped");
+                        return bleServer.disconnect();
+                    })
+                    .then(() => {
+                        console.log("Device Disconnected");
+                        bleStateContainer.innerHTML = "Device Disconnected";
+                        bleStateContainer.style.color = "#d13a30";
+
+                    })
+                    .catch(error => {
+                        console.log("An error occurred:", error);
+                    });
+            } else {
+                console.log("No characteristic found to disconnect.");
+            }
+        } else {
+            // Throw an error if Bluetooth is not connected
+            console.error("Bluetooth is not connected.");
+            window.alert("Bluetooth is not connected.")
+        }
+    }
+
+    function getDateTime() {
+        var currentdate = new Date();
+        var day = ("00" + currentdate.getDate()).slice(-2); // Convert day to string and slice
+        var month = ("00" + (currentdate.getMonth() + 1)).slice(-2);
+        var year = currentdate.getFullYear();
+        var hours = ("00" + currentdate.getHours()).slice(-2);
+        var minutes = ("00" + currentdate.getMinutes()).slice(-2);
+        var seconds = ("00" + currentdate.getSeconds()).slice(-2);
+
+        var datetime = day + "/" + month + "/" + year + " at " + hours + ":" + minutes + ":" + seconds;
+        return datetime;
+    }
+
+</script>
+
+</html>
