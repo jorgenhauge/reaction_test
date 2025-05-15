@@ -173,4 +173,7 @@ async def main():
     await asyncio.gather(t1, t2, t3)
 
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+finally:
+    set_all_pins_off()
