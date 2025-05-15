@@ -9,7 +9,6 @@ import time
 from machine import Pin, PWM
 from random import randint
 
-
 # Init MAGNET PINS
 pin_dict = dict.fromkeys((0, 1), PWM(Pin(16, Pin.OUT)))
 pin_dict.update(dict.fromkeys((2, 3), PWM(Pin(17, Pin.OUT))))
@@ -136,6 +135,10 @@ def set_all_pins_on():
 
 
 async def wait_for_write():
+    # BLE Command Map:
+    # 97 → turn one random magnet OFF after delay
+    # 98 → turn ALL ON
+    # 99 → turn ALL OFF
     CMD_ALL_OFF = 99
     CMD_ALL_ON = 98
     CMD_RANDOM_OFF = 97
