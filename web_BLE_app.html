@@ -13,30 +13,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="">
     <style>
-    .range_container {
-    width: 300px;
-    margin: 20px 0;
+    body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
     }
 
-    .sliders_control {
-    position: relative;
-    width: 100%;
+    .container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     }
 
-    .sliders_control input[type=range] {
-    position: absolute;
-    width: 100%;
-    pointer-events: none; /* Prevent direct dragging of both at once */
+    .card {
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
     }
 
-    .sliders_control input[type=range]::-webkit-slider-thumb {
-    pointer-events: auto;
+    .status-panel p,
+    .gpio-row {
+    margin: 5px 0;
     }
 
-    .labels {
+    .gpio-panel .gpio-row {
     display: flex;
     justify-content: space-between;
-    margin-top: 8px;
+    align-items: center;
+    }
+
+    .gpio-panel .gpio-row button {
+    margin-left: 5px;
+    }
+
+    .system-controls button {
+    margin-right: 10px;
+    }
+
+    button {
+    padding: 6px 12px;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    }
+
+    .range_container {
+    margin-top: 10px;
     }
     </style>
 
@@ -50,41 +74,52 @@
   <p><span id="valueContainer">NaN</span></p>
   <p>Last reading: <span id="timestamp"></span></p>
 
-  <h2>Control GPIO 16</h2>
-  <button id="onButton16">ON</button>
-  <button id="offButton16">OFF</button>
-  <h2>Control GPIO 17</h2>
-  <button id="onButton17">ON</button>
-  <button id="offButton17">OFF</button>
-  <h2>Control GPIO 18</h2>
-  <button id="onButton18">ON</button>
-  <button id="offButton18">OFF</button>
-  <h2>Control GPIO 19</h2>
-  <button id="onButton19">ON</button>
-  <button id="offButton19">OFF</button>
-  <h2>Control GPIO 21</h2>
-  <button id="onButton21">ON</button>
-  <button id="offButton21">OFF</button>
-  <h2>Reset GPIOs</h2>
-  <button id="reset">Reset</button>
-  <h2>Enable all GPIOs</h2>
-  <button id="enable">Enable</button>
-  <h2>Start</h2>
-  <button id="start">Start</button>
-  <div class="range_container">
-  <div class="sliders_control">
-    <input id="fromSlider" type="range" value="10" min="0" max="100" />
-    <input id="toSlider" type="range" value="40" min="0" max="100" />
-  </div>
-  <div class="labels">
-    <span>From: <span id="fromValue">10</span>s</span>
-    <span>To: <span id="toValue">40</span>s</span>
-  </div>
-</div>
+    <div class="container">
+    <div class="card status-panel">
+        <h2>BLE Connection</h2>
+        <button>Connect</button>
+        <button>Disconnect</button>
+        <p>Status: <span>Disconnected</span></p>
+        <p>Last Reading: <span>value</span></p>
+        <p>Timestamp: <span>timestamp</span></p>
+    </div>
+
+    <div class="card gpio-panel">
+        <h2>GPIO Controls</h2>
+        <div class="gpio-row"><span>GPIO 16:</span> <button>ON</button> <button>OFF</button></div>
+        <div class="gpio-row"><span>GPIO 17:</span> <button>ON</button> <button>OFF</button></div>
+        <div class="gpio-row"><span>GPIO 18:</span> <button>ON</button> <button>OFF</button></div>
+        <div class="gpio-row"><span>GPIO 19:</span> <button>ON</button> <button>OFF</button></div>
+        <div class="gpio-row"><span>GPIO 21:</span> <button>ON</button> <button>OFF</button></div>
+    </div>
+
+    <div class="card timer-panel">
+        <h2>Timer Range</h2>
+        <div class="range_container">
+        <div class="sliders_control">
+            <input id="fromSlider" type="range" value="10" min="0" max="100" />
+            <input id="toSlider" type="range" value="40" min="0" max="100" />
+        </div>
+        <div class="labels">
+            <span>From: <span id="fromValue">10</span>s</span>
+            <span>To: <span id="toValue">40</span>s</span>
+        </div>
+    </div>
+    </div>
+
+    <div class="card system-controls">
+        <h2>System Commands</h2>
+        <button>Reset</button>
+        <button>Enable</button>
+        <button>Start</button>
+    </div>
+    </div>
+
   <p>Last value sent: <span id="valueSent"></span></p>
   <p><a href="https://randomnerdtutorials.com/">Created by RandomNerdTutorials.com</a></p>
   <p><a href="https://RandomNerdTutorials.com/esp32-web-bluetooth/">Read the full project here.</a></p>
 </body>
+
 <script>
     // DOM Elements
     const connectButton = document.getElementById('connectBleButton');
