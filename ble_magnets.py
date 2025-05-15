@@ -136,17 +136,22 @@ def set_all_pins_on():
 
 
 async def wait_for_write():
+    CMD_ALL_OFF = 99
+    CMD_ALL_ON = 98
+    CMD_RANDOM_OFF = 97
+
     while True:
         try:
             connection, data = await gpio_characteristic.written()
             print("BEFORE decode: ", data, type(data))
             data = _decode_data(data)
             print("AFTER, Connection: ", connection, "Data: ", data)
-            if data == 99:
+
+            if data == CMD_ALL_OFF:
                 set_all_pins_off()
-            elif data == 98:
+            elif data == CMD_ALL_ON:
                 set_all_pins_on()
-            elif data == 97:
+            elif data == CMD_RANDOM_OFF:
                 set_random_pin_off()
             else:
                 set_duty_from_data(data=data)
